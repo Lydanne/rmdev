@@ -13,8 +13,8 @@ This is a tool to delete the remaining dependencies and cache files in the devel
 
 ## Feature
 
-- 🌟 multi clear
-- 🚀 first clear
+- 🌟 batch deletion
+- 🚀 fast deletion
 - 🗑 support multi lang
   - nodejs (nodule_modules)
   - rust (target)
