@@ -23,13 +23,9 @@ serde_json = "1.0.115"
 serde = { version = "1.0.197", features = ["derive"] }
 clap = { version = "4.5.8", features = ["derive"] }
 ratatui = { version = "0.27.0", features = ["crossterm"] }
-tui-input = "*"
-serde_json_path = "0.6.7"
-regex = "1.10.5"
-walkdir = "2"
-unicode-width = "*"
+unicode-width = "0.1.13"
 
 [dependencies.educe]
-version = "*"
+version = "0.6.0"
 features = ["Default"]
 default-features = false
