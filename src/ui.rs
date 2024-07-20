@@ -20,8 +20,7 @@ const PALETTES: [tailwind::Palette; 4] = [
     tailwind::EMERALD,
     tailwind::INDIGO,
 ];
-const INFO_TEXT: &str =
-    "(Esc) quit | (↑) move up | (↓) move down | (→) next color | (←) previous color";
+const INFO_TEXT: &str = "(Esc) quit | (↑) move up | (↓) move down | (Enter) clear all cache";
 
 const ITEM_HEIGHT: usize = 4;
 
@@ -164,15 +163,38 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
 }
 
 fn ui(f: &mut Frame, app: &mut App) {
-    let rects = Layout::vertical([Constraint::Min(5), Constraint::Length(3)]).split(f.size());
+    let rects = Layout::vertical([
+        Constraint::Length(3),
+        Constraint::Min(5),
+        Constraint::Length(3),
+    ])
+    .split(f.size());
 
     app.set_colors();
 
-    render_table(f, app, rects[0]);
+    render_header(f, app, rects[0]);
 
-    render_scrollbar(f, app, rects[0]);
+    render_table(f, app, rects[1]);
 
-    render_footer(f, app, rects[1]);
+    render_scrollbar(f, app, rects[1]);
+
+    render_footer(f, app, rects[2]);
+}
+
+fn render_header(f: &mut Frame, app: &App, area: Rect) {
+    let header = Paragraph::new("  🚀 Rmdev (https://github.com/WumaCoder/rmdev 🌟)")
+        .style(
+            Style::new()
+                .fg(app.colors.header_fg)
+                .bg(app.colors.header_bg),
+        )
+        // .alignment(Alignment::Center)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::new().fg(app.colors.footer_border_color)),
+        );
+    f.render_widget(header, area);
 }
 
 fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
@@ -245,7 +267,7 @@ fn render_scrollbar(f: &mut Frame, app: &mut App, area: Rect) {
 }
 
 fn render_footer(f: &mut Frame, app: &App, area: Rect) {
-    let info_footer = Paragraph::new(Line::from(INFO_TEXT))
+    let info_footer = Paragraph::new(Line::from(format!("{INFO_TEXT} ({})", app.items.len())))
         .style(Style::new().fg(app.colors.row_fg).bg(app.colors.buffer_bg))
         .centered()
         .block(
