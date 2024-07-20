@@ -1,7 +1,14 @@
 [package]
 name = "rmdev"
-version = "0.1.0"
+version = "0.0.0"
+authors = ["WumaCoder <wumacoder@gmail.com>"]
+description = "This is a tool to delete the remaining dependencies and cache files in the development environment, eg: nodule_modules、target..."
 edition = "2021"
+keywords = ["tools", "cli"]
+categories = ["development-tools", "utilities", "system-programming", "command-line-utilities", "process-management"]
+homepage = "https://github.com/WumaCoder/rmdev.git"
+repository = "https://github.com/WumaCoder/rmdev.git"
+license = "MIT"
 
 
 [[bin]]
