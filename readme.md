@@ -36,6 +36,12 @@ rmdev clear ~/
 # ~/ scan all project.
 ```
 
+## Help
+
+```shell
+rmdev clear --help
+```
+
 ## About
 
 MIT
