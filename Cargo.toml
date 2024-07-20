@@ -1,0 +1,28 @@
+[package]
+name = "rmdev"
+version = "0.1.0"
+edition = "2021"
+
+
+[[bin]]
+name = "rmdev"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1.38.0", features = ["full", "tracing"] }
+futures = "0.3.30"
+anyhow = "1.0.86"
+serde_json = "1.0.115"
+serde = { version = "1.0.197", features = ["derive"] }
+clap = { version = "4.5.8", features = ["derive"] }
+ratatui = { version = "0.27.0", features = ["crossterm"] }
+tui-input = "*"
+serde_json_path = "0.6.7"
+regex = "1.10.5"
+walkdir = "2"
+unicode-width = "*"
+
+[dependencies.educe]
+version = "*"
+features = ["Default"]
+default-features = false
