@@ -2,16 +2,18 @@ use std::{
     collections::HashSet,
     fs, io,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
+    thread::spawn,
 };
 
-use crate::ui;
+use crate::ui::{self, UI};
 
 #[derive(clap::Parser, Debug)]
 pub struct Clear {
-    /// eg: qxg
+    /// scan target dir
     pub target: String,
 
-    /// force to clean
+    /// force clean all
     #[clap(short, long)]
     pub force: bool,
 
@@ -22,10 +24,19 @@ pub struct Clear {
 
 impl Clear {
     pub async fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let rows = scan_target(self.target.clone().into())?;
-        // println!("Scan rows: {:?}", rows);
+        let rows = Arc::new(Mutex::new(Vec::new()));
 
-        ui::boot(rows)?;
+        // println!("Scan rows: {:?}", rows);
+        let th = spawn({
+            let rows = rows.clone();
+            move || {
+                ui::boot(UI { rows }).unwrap();
+            }
+        });
+
+        scan_target(self.target.clone().into(), rows.clone()).await?;
+
+        th.join().unwrap();
 
         Ok(())
     }
@@ -69,53 +80,67 @@ impl ScanRow {
     }
 }
 
-fn scan_target(path: PathBuf) -> io::Result<Vec<ScanRow>> {
+async fn scan_target(path: PathBuf, rows: Arc<Mutex<Vec<ScanRow>>>) -> io::Result<()> {
     let mut stack = vec![path];
-    let mut scan_rows = vec![];
 
     while let Some(path) = stack.pop() {
         if path.is_dir() {
             // println!("Directory: {:?}", path);
-
-            let is_npm = path.join("package.json").exists();
-            let is_cargo = path.join("Cargo.toml").exists();
-
-            if is_npm {
+            let _ = tokio::spawn({
                 let path = path.clone();
-                let project = path.file_name().unwrap().to_str().unwrap().to_string();
-                scan_rows.push(ScanRow {
-                    path: path.clone(),
-                    cate: ScanCate::Npm,
-                    // size: scan_size(path_clone, &mut HashSet::new())?,
-                    size: 0,
-                    project,
-                });
-            } else if is_cargo {
-                let path = path.clone();
-                let project = path.file_name().unwrap().to_str().unwrap().to_string();
+                let scan_rows = rows.clone();
+                async move {
+                    let is_npm = path.join("package.json").exists();
+                    let is_cargo = path.join("Cargo.toml").exists();
 
-                scan_rows.push(ScanRow {
-                    path: path.clone(),
-                    cate: ScanCate::Cargo,
-                    // size: scan_size(path_clone, &mut HashSet::new())?,
-                    size: 0,
-                    project,
-                });
-            }
+                    if is_npm {
+                        let mut scan_rows = scan_rows.lock().unwrap();
+                        let path = path.clone();
+                        let project = path.file_name().unwrap().to_str().unwrap().to_string();
+                        scan_rows.push(ScanRow {
+                            path: path.clone(),
+                            cate: ScanCate::Npm,
+                            // size: scan_size(path_clone, &mut HashSet::new())?,
+                            size: 0,
+                            project,
+                        });
+                        // println!("Scan: {:?} {}", path, scan_rows.len());
+                    } else if is_cargo {
+                        let mut scan_rows = scan_rows.lock().unwrap();
+                        let path = path.clone();
+                        let project = path.file_name().unwrap().to_str().unwrap().to_string();
+
+                        scan_rows.push(ScanRow {
+                            path: path.clone(),
+                            cate: ScanCate::Cargo,
+                            // size: scan_size(path_clone, &mut HashSet::new())?,
+                            size: 0,
+                            project,
+                        });
+                        // println!("Scan: {:?} {}", path, scan_rows.len());
+                    }
+                }
+            })
+            .await;
             if path.ends_with("node_modules") || path.ends_with("target") {
                 continue;
             }
-            for entry in fs::read_dir(path)? {
-                let entry = entry?;
-                let entry_path = entry.path();
-                stack.push(entry_path);
+            let dir = fs::read_dir(path);
+            if let Ok(dir) = dir {
+                for entry in dir {
+                    let entry = entry;
+                    if let Ok(entry) = entry {
+                        let entry_path = entry.path();
+                        stack.push(entry_path);
+                    }
+                }
             }
         } else {
             // println!("File: {:?}", path);
         }
     }
 
-    Ok(scan_rows)
+    Ok(())
 }
 
 fn scan_size(path: PathBuf, visited: &mut HashSet<PathBuf>) -> io::Result<u64> {

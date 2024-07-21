@@ -1,7 +1,12 @@
-use std::{error::Error, io};
+use std::{
+    error::Error,
+    io,
+    sync::{Arc, Mutex},
+};
 
 use ratatui::{
     crossterm::{
+        self,
         event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
         execute,
         terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -50,30 +55,35 @@ impl TableColors {
     }
 }
 
+pub struct UI {
+    pub rows: Arc<Mutex<Vec<ScanRow>>>,
+}
+
 struct App {
     state: TableState,
-    items: Vec<ScanRow>,
     longest_item_lens: Vec<usize>,
     scroll_state: ScrollbarState,
     colors: TableColors,
     color_index: usize,
+    ui: UI,
 }
 
 impl App {
-    fn new(scan_rows: Vec<ScanRow>) -> Self {
+    fn new(ui: UI) -> Self {
+        let scan_rows = ui.rows.clone();
         Self {
             state: TableState::default().with_selected(0),
-            longest_item_lens: constraint_len_calculator(&scan_rows),
-            scroll_state: ScrollbarState::new((scan_rows.len() - 1) * ITEM_HEIGHT),
+            longest_item_lens: constraint_len_calculator(scan_rows.clone()),
+            scroll_state: ScrollbarState::new(0 * ITEM_HEIGHT),
             colors: TableColors::new(&PALETTES[0]),
             color_index: 0,
-            items: scan_rows,
+            ui,
         }
     }
     pub fn next(&mut self) {
         let i = match self.state.selected() {
             Some(i) => {
-                if i >= self.items.len() - 1 {
+                if i >= self.ui.rows.lock().unwrap().len() - 1 {
                     0
                 } else {
                     i + 1
@@ -82,14 +92,16 @@ impl App {
             None => 0,
         };
         self.state.select(Some(i));
-        self.scroll_state = self.scroll_state.position(i * ITEM_HEIGHT);
+        self.scroll_state =
+            ScrollbarState::new((self.ui.rows.clone().lock().unwrap().len() - 1) * ITEM_HEIGHT)
+                .position(i * ITEM_HEIGHT);
     }
 
     pub fn previous(&mut self) {
         let i = match self.state.selected() {
             Some(i) => {
                 if i == 0 {
-                    self.items.len() - 1
+                    self.ui.rows.lock().unwrap().len() - 1
                 } else {
                     i - 1
                 }
@@ -97,7 +109,9 @@ impl App {
             None => 0,
         };
         self.state.select(Some(i));
-        self.scroll_state = self.scroll_state.position(i * ITEM_HEIGHT);
+        self.scroll_state =
+            ScrollbarState::new((self.ui.rows.clone().lock().unwrap().len() - 1) * ITEM_HEIGHT)
+                .position(i * ITEM_HEIGHT);
     }
 
     pub fn next_color(&mut self) {
@@ -114,7 +128,7 @@ impl App {
     }
 }
 
-pub fn boot(rows: Vec<ScanRow>) -> Result<(), Box<dyn Error>> {
+pub fn boot(ui: UI) -> Result<(), Box<dyn Error>> {
     // setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -123,7 +137,7 @@ pub fn boot(rows: Vec<ScanRow>) -> Result<(), Box<dyn Error>> {
     let mut terminal = Terminal::new(backend)?;
 
     // create app and run it
-    let app = App::new(rows);
+    let app = App::new(ui);
     let res = run_app(&mut terminal, app);
 
     // restore terminal
@@ -145,7 +159,6 @@ pub fn boot(rows: Vec<ScanRow>) -> Result<(), Box<dyn Error>> {
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
     loop {
         terminal.draw(|f| ui(f, &mut app))?;
-
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
                 use KeyCode::*;
@@ -211,7 +224,8 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
         .collect::<Row>()
         .style(header_style)
         .height(1);
-    let rows = app.items.iter().enumerate().map(|(i, scan_row)| {
+    let scan_rows = app.ui.rows.lock().unwrap();
+    let rows = scan_rows.iter().enumerate().map(|(i, scan_row)| {
         let color = match i % 2 {
             0 => app.colors.normal_row_color,
             _ => app.colors.alt_row_color,
@@ -238,10 +252,10 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
     f.render_stateful_widget(t, area, &mut app.state);
 }
 
-fn constraint_len_calculator(items: &[ScanRow]) -> Vec<usize> {
+fn constraint_len_calculator(items: Arc<Mutex<Vec<ScanRow>>>) -> Vec<usize> {
     let mut widths = ScanRow::ref_head().map(UnicodeWidthStr::width);
 
-    for (_i, row) in items.iter().enumerate() {
+    for (_i, row) in items.lock().unwrap().iter().enumerate() {
         let row_widths = row.ref_data().map(|s| UnicodeWidthStr::width(s.as_str()));
         for (_j, (width, row_width)) in widths.iter_mut().zip(row_widths).enumerate() {
             if *width < row_width {
@@ -267,13 +281,16 @@ fn render_scrollbar(f: &mut Frame, app: &mut App, area: Rect) {
 }
 
 fn render_footer(f: &mut Frame, app: &App, area: Rect) {
-    let info_footer = Paragraph::new(Line::from(format!("{INFO_TEXT} ({})", app.items.len())))
-        .style(Style::new().fg(app.colors.row_fg).bg(app.colors.buffer_bg))
-        .centered()
-        .block(
-            Block::bordered()
-                .border_type(BorderType::Double)
-                .border_style(Style::new().fg(app.colors.footer_border_color)),
-        );
+    let info_footer = Paragraph::new(Line::from(format!(
+        "{INFO_TEXT} ({})",
+        app.ui.rows.lock().unwrap().len()
+    )))
+    .style(Style::new().fg(app.colors.row_fg).bg(app.colors.buffer_bg))
+    .centered()
+    .block(
+        Block::bordered()
+            .border_type(BorderType::Double)
+            .border_style(Style::new().fg(app.colors.footer_border_color)),
+    );
     f.render_widget(info_footer, area);
 }
