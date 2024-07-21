@@ -47,9 +47,13 @@ rmdev clear ../ -f
 rmdev clear --help
 ```
 
+## Skip Scan
+
+Add `rmdev.skip` file to your project. skip to deletion.
+
 ## Contribute
 
-I hope that this tool will eventually cover all the major languages, but more of this work needs to be contributed by all of you!
+I hope that this tool will eventually cover all the major languages, but more of this work needs to be contributed by all of you ❤️!
 
 We can contribute by modifying the `src/scan_category.rs` file and writing in the PR what tool in what language generated the.
 
