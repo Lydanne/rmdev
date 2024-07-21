@@ -93,9 +93,10 @@ fn clear_target(rows: Arc<Mutex<Vec<ScanRow>>>, force: bool) -> io::Result<usize
                 if count > 0 {
                     println!("[RM] {:?} success remove {}.", row.path, count);
                     removed_count += 1;
-                } else {
-                    println!("[RM] {:?} no need to remove.", row.path);
                 }
+                // else {
+                //     println!("[RM] {:?} no need to remove.", row.path);
+                // }
             }
             Err(err) => {
                 eprintln!("[RM] {:?} Error: {}", row.path, err);
@@ -127,8 +128,9 @@ fn traverse_rm(path: PathBuf, cate: ScanCate, force: bool) -> io::Result<usize> 
                 }
             }
             if remove_yes {
-                let _ = fs::remove_dir_all(path);
-                removed_count += 1;
+                if let Ok(_) = fs::remove_dir_all(path) {
+                    removed_count += 1;
+                }
             }
             continue;
         }
