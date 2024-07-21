@@ -99,11 +99,12 @@ impl ScanRow {
 
 async fn scan_target(path: PathBuf, rows: Arc<Mutex<Vec<ScanRow>>>) -> io::Result<()> {
     let mut stack = vec![path];
+    let mut visited = Vec::new();
 
     while let Some(path) = stack.pop() {
         if path.is_dir() {
             // println!("Directory: {:?}", path);
-            let _ = tokio::spawn({
+            let task = tokio::spawn({
                 let path = path.clone();
                 let scan_rows = rows.clone();
                 async move {
@@ -141,8 +142,8 @@ async fn scan_target(path: PathBuf, rows: Arc<Mutex<Vec<ScanRow>>>) -> io::Resul
                         // println!("Scan: {:?} {}", path, scan_rows.len());
                     }
                 }
-            })
-            .await;
+            });
+            visited.push(task);
             if path.ends_with("node_modules") || path.ends_with("target") {
                 continue;
             }
@@ -161,11 +162,15 @@ async fn scan_target(path: PathBuf, rows: Arc<Mutex<Vec<ScanRow>>>) -> io::Resul
         }
     }
 
+    for v in visited.drain(..) {
+        v.await?;
+    }
+
     Ok(())
 }
 
 fn scan_size(path: PathBuf, visited: &mut HashSet<PathBuf>) -> io::Result<u64> {
-    let mut stack = vec![path];
+    let mut stack: Vec<PathBuf> = vec![path];
     let mut size = 0;
 
     while let Some(path) = stack.pop() {
