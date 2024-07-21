@@ -187,6 +187,7 @@ fn ui(f: &mut Frame, app: &mut App) {
     let rects = Layout::vertical([
         Constraint::Length(3),
         Constraint::Min(5),
+        Constraint::Length(2),
         Constraint::Length(3),
     ])
     .split(f.size());
@@ -199,7 +200,9 @@ fn ui(f: &mut Frame, app: &mut App) {
 
     render_scrollbar(f, app, rects[1]);
 
-    render_footer(f, app, rects[2]);
+    render_table_total(f, app, rects[2]);
+
+    render_footer(f, app, rects[3]);
 }
 
 fn render_header(f: &mut Frame, app: &App, area: Rect) {
@@ -293,17 +296,33 @@ fn render_scrollbar(f: &mut Frame, app: &mut App, area: Rect) {
     );
 }
 
-fn render_footer(f: &mut Frame, app: &App, area: Rect) {
+fn render_table_total(f: &mut Frame, app: &App, area: Rect) {
+    let items = app.ui.rows.lock().unwrap();
     let info_footer = Paragraph::new(Line::from(format!(
-        "{INFO_TEXT} ({})",
-        app.ui.rows.lock().unwrap().len()
+        "ROWS: {}  TOTAL: {:.2}GB   ",
+        items.len(),
+        (items.iter().map(|r| r.size).sum::<u64>() as f64) / 1024.0 / 1024.0 / 1024.0
     )))
     .style(Style::new().fg(app.colors.row_fg).bg(app.colors.buffer_bg))
-    .centered()
+    .right_aligned()
     .block(
         Block::bordered()
-            .border_type(BorderType::Double)
+            .border_type(BorderType::Plain)
+            .borders(Borders::TOP)
             .border_style(Style::new().fg(app.colors.footer_border_color)),
     );
+    f.render_widget(info_footer, area);
+}
+
+fn render_footer(f: &mut Frame, app: &App, area: Rect) {
+    let info_footer = Paragraph::new(Line::from(format!("{INFO_TEXT}",)))
+        .style(Style::new().fg(app.colors.row_fg).bg(app.colors.buffer_bg))
+        .centered()
+        .block(
+            Block::bordered()
+                .border_type(BorderType::Double)
+                .borders(Borders::TOP | Borders::BOTTOM)
+                .border_style(Style::new().fg(app.colors.footer_border_color)),
+        );
     f.render_widget(info_footer, area);
 }
