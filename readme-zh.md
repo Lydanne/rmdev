@@ -7,51 +7,48 @@
     <img src="https://img.shields.io/crates/v/rmdev?style=for-the-badge" />
     <img src="https://img.shields.io/github/license/WumaCoder/rmdev?style=for-the-badge" />
   </p>
-  <p>
-    <a src="./readme-zh.md">中文</a>
-  </p>
 </div>
 
-## Hello
+## 开始
 
-This is a tool to delete the remaining dependencies and cache files in the development environment, eg: nodule_modules、target...
+这是一个工具，用于删除开发环境中的剩余依赖项和缓存文件，例如：node_modules、target 等。
 
-## Feature
+## 特性
 
-- 🌟 batch deletion
-- 🚀 fast deletion
-- 🗑 support multi lang
-  - nodejs (nodule_modules)
+- 🌟 批量删除
+- 🚀 快速删除
+- 🗑 支持多种语言
+  - nodejs (node_modules)
   - rust (target)
   - ...
 
-## Install
+## 安装
 
 ```shell
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh # install cargo
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh # 安装 cargo
 
 cargo install rmdev
 ```
 
-## Use
+## 使用
 
 ```shell
 rmdev clear ../ -f
 
-# ../ clear target dir
+# ../ 清除 target 目录
 ```
 
-## Help
+## 帮助
 
 ```shell
 rmdev clear --help
 ```
 
-## Contribute
+## 贡献
 
-I hope that this tool will eventually cover all the major languages, but more of this work needs to be contributed by all of you!
+我希望这个工具最终能覆盖所有主要语言，但更多的工作需要大家的贡献！
 
-We can contribute by modifying the `src/scan_category.rs` file and writing in the PR what tool in what language generated the.
+我们可以通过修改 `src/scan_category.rs` 文件来贡献，并在 PR 中说明是什么语言生成的什么工具。
 
 ```rs
 use std::path::Path;
@@ -90,12 +87,10 @@ impl ScanCate {
         .to_string()
     }
 }
-
-
 ```
 
-The whole process is still very easy, everyone is welcome to contribute.
+整个过程非常简单，欢迎大家贡献。
 
-## About
+## 关于
 
 MIT
