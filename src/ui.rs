@@ -83,9 +83,13 @@ impl App {
         }
     }
     pub fn next(&mut self) {
+        let len = self.ui.rows.lock().unwrap().len();
+        if len == 0 {
+            return;
+        }
         let i = match self.state.selected() {
             Some(i) => {
-                if i >= self.ui.rows.lock().unwrap().len() - 1 {
+                if i >= len - 1 {
                     0
                 } else {
                     i + 1
@@ -94,16 +98,18 @@ impl App {
             None => 0,
         };
         self.state.select(Some(i));
-        self.scroll_state =
-            ScrollbarState::new((self.ui.rows.clone().lock().unwrap().len() - 1) * ITEM_HEIGHT)
-                .position(i * ITEM_HEIGHT);
+        self.scroll_state = ScrollbarState::new((len - 1) * ITEM_HEIGHT).position(i * ITEM_HEIGHT);
     }
 
     pub fn previous(&mut self) {
+        let len = self.ui.rows.lock().unwrap().len();
+        if len == 0 {
+            return;
+        }
         let i = match self.state.selected() {
             Some(i) => {
                 if i == 0 {
-                    self.ui.rows.lock().unwrap().len() - 1
+                    len - 1
                 } else {
                     i - 1
                 }
@@ -111,9 +117,7 @@ impl App {
             None => 0,
         };
         self.state.select(Some(i));
-        self.scroll_state =
-            ScrollbarState::new((self.ui.rows.clone().lock().unwrap().len() - 1) * ITEM_HEIGHT)
-                .position(i * ITEM_HEIGHT);
+        self.scroll_state = ScrollbarState::new((len - 1) * ITEM_HEIGHT).position(i * ITEM_HEIGHT);
     }
 
     pub fn next_color(&mut self) {
