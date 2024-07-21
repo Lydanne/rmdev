@@ -249,7 +249,7 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
     let t = Table::new(
         rows,
         [
-            Constraint::Percentage(20 as u16),
+            Constraint::Percentage(25 as u16),
             Constraint::Max(10 as u16),
             Constraint::Max(10 as u16),
             Constraint::Min(10 as u16),
