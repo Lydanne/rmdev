@@ -17,9 +17,10 @@ pub struct Clear {
     /// scan target dir
     pub target: String,
 
-    // /// force clean all
-    // #[clap(short, long)]
-    // pub force: bool,
+    /// force clean all
+    #[clap(short, long)]
+    pub force: bool,
+
     /// ci env
     #[clap(short, long)]
     pub ci: bool,
@@ -31,7 +32,7 @@ impl Clear {
 
         if self.ci {
             scan_target(self.target.clone().into(), rows.clone()).await?;
-            clear_target(rows.clone())?;
+            clear_target(rows.clone(), self.force)?;
             println!("Clear {} project cache.", rows.lock().unwrap().len());
         } else {
             // println!("Scan rows: {:?}", rows);
@@ -51,8 +52,8 @@ impl Clear {
             let code = th.join().unwrap();
 
             if code == 0 {
-                clear_target(rows.clone())?;
-                println!("Clear {} project cache.", rows.lock().unwrap().len());
+                clear_target(rows.clone(), self.force)?;
+                println!("[RM] Clear {} project cache.", rows.lock().unwrap().len());
             }
         }
 
@@ -83,26 +84,31 @@ impl ScanRow {
     }
 }
 
-fn clear_target(rows: Arc<Mutex<Vec<ScanRow>>>) -> io::Result<()> {
+fn clear_target(rows: Arc<Mutex<Vec<ScanRow>>>, force: bool) -> io::Result<()> {
     let rows = rows.lock().unwrap();
     for row in rows.iter() {
-        if let Err(err) = traverse_rm(row.path.clone(), row.cate.clone()) {
-            eprintln!("[RM] {:?} Error: {}", row.path, err);
+        match traverse_rm(row.path.clone(), row.cate.clone(), force) {
+            Ok(count) => {
+                println!("[RM] {:?} success remove {}.", row.path, count);
+            }
+            Err(err) => {
+                eprintln!("[RM] {:?} Error: {}", row.path, err);
+            }
         }
-        println!("[RM] {:?} Success", row.path);
     }
     Ok(())
 }
 
-fn traverse_rm(path: PathBuf, cate: ScanCate) -> io::Result<()> {
+fn traverse_rm(path: PathBuf, cate: ScanCate, force: bool) -> io::Result<usize> {
     let mut stack = vec![path];
+    let mut removed_count = 0;
 
     while let Some(path) = stack.pop() {
         if cate.rm_keyfile(&path) {
-            let mut remove_yes = false;
+            let mut remove_yes = force;
             let confirmation = dialoguer::Confirm::new()
                 .with_prompt(format!(
-                    "[RM] The `{path:?}` directory is about to be remove, Do you want to continue?"
+                    "[RM] The {path:?} directory is about to be remove, Do you want to continue?"
                 ))
                 .interact()
                 .unwrap();
@@ -112,6 +118,7 @@ fn traverse_rm(path: PathBuf, cate: ScanCate) -> io::Result<()> {
             }
             if remove_yes {
                 let _ = fs::remove_dir_all(path);
+                removed_count += 1;
             }
             continue;
         }
@@ -129,7 +136,7 @@ fn traverse_rm(path: PathBuf, cate: ScanCate) -> io::Result<()> {
         }
     }
 
-    Ok(())
+    Ok(removed_count)
 }
 
 async fn scan_target(path: PathBuf, rows: Arc<Mutex<Vec<ScanRow>>>) -> io::Result<()> {
