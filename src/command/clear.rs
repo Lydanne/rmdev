@@ -1,7 +1,6 @@
 use std::{
     collections::HashSet,
     fs, io,
-    os::unix::process,
     path::{Path, PathBuf},
     process::exit,
     sync::{Arc, Mutex, RwLock},
