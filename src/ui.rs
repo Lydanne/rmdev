@@ -2,6 +2,7 @@ use std::{
     error::Error,
     io,
     sync::{Arc, Mutex},
+    time::{Duration, Instant},
 };
 
 use ratatui::{
@@ -15,6 +16,7 @@ use ratatui::{
     widgets::*,
 };
 use style::palette::tailwind;
+use tokio::time::interval;
 use unicode_width::UnicodeWidthStr;
 
 use crate::command::clear::ScanRow;
@@ -164,21 +166,36 @@ pub fn boot(ui: UI) -> Result<usize, Box<dyn Error>> {
 }
 
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<usize> {
+    let tick_rate = Duration::from_millis(160); // Set the refresh rate
+    let mut last_tick = Instant::now();
+
     loop {
         terminal.draw(|f| ui(f, &mut app))?;
-        if let Event::Key(key) = event::read()? {
-            if key.kind == KeyEventKind::Press {
-                use KeyCode::*;
-                match key.code {
-                    Char('q') | Esc => return Ok(1),
-                    Char('y') | Enter => return Ok(0),
-                    Char('j') | Down => app.next(),
-                    Char('k') | Up => app.previous(),
-                    Char('l') | Right => app.next_color(),
-                    Char('h') | Left => app.previous_color(),
-                    _ => {}
+
+        let timeout = tick_rate
+            .checked_sub(last_tick.elapsed())
+            .unwrap_or_else(|| Duration::from_secs(0));
+
+        if crossterm::event::poll(timeout)? {
+            if let Event::Key(key) = event::read()? {
+                if key.kind == KeyEventKind::Press {
+                    use KeyCode::*;
+                    match key.code {
+                        Char('q') | Esc => return Ok(1),
+                        Char('y') | Enter => return Ok(0),
+                        Char('j') | Down => app.next(),
+                        Char('k') | Up => app.previous(),
+                        Char('l') | Right => app.next_color(),
+                        Char('h') | Left => app.previous_color(),
+                        _ => {}
+                    }
                 }
             }
+        }
+
+        if last_tick.elapsed() >= tick_rate {
+            last_tick = Instant::now();
+            // Update your app state here
         }
     }
 }
