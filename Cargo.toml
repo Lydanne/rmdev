@@ -1,6 +1,6 @@
 [package]
 name = "rmdev"
-version = "0.0.0"
+version = "0.2.3"
 authors = ["WumaCoder <wumacoder@gmail.com>"]
 description = "This is a tool to delete the remaining dependencies and cache files in the development environment, eg: nodule_modules、target..."
 edition = "2021"
