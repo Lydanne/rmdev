@@ -8,7 +8,7 @@
     <img src="https://img.shields.io/github/license/WumaCoder/rmdev?style=for-the-badge" />
   </p>
   <p>
-    <a src="./readme-zh.md">中文</a>
+    <a href="./readme-zh.md">中文</a>
   </p>
 </div>
 
