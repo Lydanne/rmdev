@@ -635,6 +635,7 @@ dependencies = [
  "clap",
  "educe",
  "futures",
+ "once_cell",
  "ratatui",
  "rayon",
  "serde",

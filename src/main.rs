@@ -7,6 +7,7 @@ use command::Cli;
 use tokio::runtime::Builder;
 
 mod command;
+mod scan_category;
 mod signal;
 mod ui;
 

@@ -8,7 +8,10 @@ use std::{
     thread::{self, spawn},
 };
 
-use crate::ui::{self, UI};
+use crate::{
+    scan_category,
+    ui::{self, UI},
+};
 
 #[derive(clap::Parser, Debug)]
 pub struct Clear {
@@ -60,25 +63,10 @@ impl Clear {
 }
 
 #[derive(Debug)]
-pub enum ScanCate {
-    Npm,
-    Cargo,
-}
-
-impl ScanCate {
-    const fn as_str(&self) -> &'static str {
-        match self {
-            Self::Npm => "NPM",
-            Self::Cargo => "Cargo",
-        }
-    }
-}
-
-#[derive(Debug)]
 pub struct ScanRow {
     pub path: PathBuf,
     pub project: String,
-    pub cate: ScanCate,
+    pub cate: String,
     pub size: u64, // Bytes
 }
 
@@ -110,45 +98,37 @@ async fn scan_target(path: PathBuf, rows: Arc<Mutex<Vec<ScanRow>>>) -> io::Resul
                 let scan_rows = rows.clone();
                 let visited = visited.clone();
                 async move {
-                    let is_npm = path.join("package.json").exists();
-                    let is_cargo = path.join("Cargo.toml").exists();
                     let is_skip = path.join("rmdev.skip").exists();
                     if is_skip {
                         return;
                     }
 
-                    if is_npm {
-                        let mut scan_rows = scan_rows.lock().unwrap();
-                        let path = path.clone();
-                        let project = path.file_name().unwrap().to_str().unwrap().to_string();
-                        scan_rows.push(ScanRow {
-                            path: path.clone(),
-                            cate: ScanCate::Npm,
-                            size: get_directory_size(&path, visited).unwrap(),
-                            // size: scan_size(path, &mut HashSet::new()).unwrap(),
-                            // size: 0,
-                            project,
-                        });
-                        // println!("Scan: {:?} {}", path, scan_rows.len());
-                    } else if is_cargo {
-                        let mut scan_rows = scan_rows.lock().unwrap();
-                        let path = path.clone();
-                        let project = path.file_name().unwrap().to_str().unwrap().to_string();
-
-                        scan_rows.push(ScanRow {
-                            path: path.clone(),
-                            cate: ScanCate::Cargo,
-                            size: get_directory_size(&path, visited).unwrap(),
-                            // size: scan_size(path, &mut HashSet::new()).unwrap(),
-                            // size: 0,
-                            project,
-                        });
-                        // println!("Scan: {:?} {}", path, scan_rows.len());
+                    for cate in scan_category::STRATEGY.iter() {
+                        if cate.access_keyfile(&path) {
+                            let mut scan_rows = scan_rows.lock().unwrap();
+                            let path = path.clone();
+                            let project = path.file_name().unwrap().to_str().unwrap().to_string();
+                            scan_rows.push(ScanRow {
+                                path: path.clone(),
+                                cate: cate.ident(),
+                                size: get_directory_size(&path, visited).unwrap(),
+                                // size: scan_size(path, &mut HashSet::new()).unwrap(),
+                                // size: 0,
+                                project,
+                            });
+                            return;
+                        }
                     }
                 }
             })
             .await?;
-            if path.ends_with("node_modules") || path.ends_with("target") || path.ends_with(".git")
+            if path.ends_with(".git") {
+                continue;
+            }
+            if scan_category::STRATEGY
+                .iter()
+                .find(|cate| cate.rm_keyfile(&path))
+                .is_some()
             {
                 continue;
             }
@@ -162,14 +142,8 @@ async fn scan_target(path: PathBuf, rows: Arc<Mutex<Vec<ScanRow>>>) -> io::Resul
                     }
                 }
             }
-        } else {
-            // println!("File: {:?}", path);
         }
     }
-
-    // for v in visited.drain(..) {
-    //     v.await?;
-    // }
 
     Ok(())
 }
