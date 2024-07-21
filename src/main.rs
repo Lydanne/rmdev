@@ -7,6 +7,7 @@ use command::Cli;
 use tokio::runtime::Builder;
 
 mod command;
+mod signal;
 mod ui;
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {

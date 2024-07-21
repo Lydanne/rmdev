@@ -128,7 +128,8 @@ impl App {
     }
 }
 
-pub fn boot(ui: UI) -> Result<(), Box<dyn Error>> {
+/// 2 异常退出 1 退出， 0 是继续
+pub fn boot(ui: UI) -> Result<usize, Box<dyn Error>> {
     // setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -139,6 +140,11 @@ pub fn boot(ui: UI) -> Result<(), Box<dyn Error>> {
     // create app and run it
     let app = App::new(ui);
     let res = run_app(&mut terminal, app);
+    let code = if let io::Result::Ok(code) = res {
+        code
+    } else {
+        2
+    };
 
     // restore terminal
     disable_raw_mode()?;
@@ -151,19 +157,21 @@ pub fn boot(ui: UI) -> Result<(), Box<dyn Error>> {
 
     if let Err(err) = res {
         println!("{err:?}");
+        return Ok(2);
     }
 
-    Ok(())
+    Ok(code)
 }
 
-fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
+fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<usize> {
     loop {
         terminal.draw(|f| ui(f, &mut app))?;
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
                 use KeyCode::*;
                 match key.code {
-                    Char('q') | Esc => return Ok(()),
+                    Char('q') | Esc => return Ok(1),
+                    Char('y') | Enter => return Ok(0),
                     Char('j') | Down => app.next(),
                     Char('k') | Up => app.previous(),
                     Char('l') | Right => app.next_color(),
@@ -240,9 +248,14 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
     let bar = " █ ";
     let t = Table::new(
         rows,
-        app.longest_item_lens
-            .iter()
-            .map(|w| Constraint::Min(*w as u16)),
+        [
+            Constraint::Percentage(20 as u16),
+            Constraint::Max(10 as u16),
+            Constraint::Max(10 as u16),
+            Constraint::Min(10 as u16),
+        ], // app.longest_item_lens
+           //     .iter()
+           //     .map(|w| Constraint::Min(*w as u16)),
     )
     .header(header)
     .highlight_style(selected_style)

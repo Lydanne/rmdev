@@ -1,7 +1,9 @@
 use std::{
     collections::HashSet,
     fs, io,
+    os::unix::process,
     path::{Path, PathBuf},
+    process::exit,
     sync::{Arc, Mutex},
     thread::spawn,
 };
@@ -13,10 +15,9 @@ pub struct Clear {
     /// scan target dir
     pub target: String,
 
-    /// force clean all
-    #[clap(short, long)]
-    pub force: bool,
-
+    // /// force clean all
+    // #[clap(short, long)]
+    // pub force: bool,
     /// ci env
     #[clap(short, long)]
     pub ci: bool,
@@ -26,17 +27,33 @@ impl Clear {
     pub async fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
         let rows = Arc::new(Mutex::new(Vec::new()));
 
-        // println!("Scan rows: {:?}", rows);
-        let th = spawn({
-            let rows = rows.clone();
-            move || {
-                ui::boot(UI { rows }).unwrap();
+        if self.ci {
+            scan_target(self.target.clone().into(), rows.clone()).await?;
+            println!("Clear {} project cache.", rows.lock().unwrap().len());
+        } else {
+            // println!("Scan rows: {:?}", rows);
+            let th = spawn({
+                let rows = rows.clone();
+                move || {
+                    let code = ui::boot(UI { rows }).unwrap();
+                    if code != 0 {
+                        exit(0);
+                    }
+                    return code;
+                }
+            });
+
+            scan_target(self.target.clone().into(), rows.clone()).await?;
+
+            let code = th.join().unwrap();
+
+            if code == 0 {
+                println!("Clear {} project cache.", rows.lock().unwrap().len());
+                for row in rows.lock().unwrap().iter() {
+                    println!("{:?}", row);
+                }
             }
-        });
-
-        scan_target(self.target.clone().into(), rows.clone()).await?;
-
-        th.join().unwrap();
+        }
 
         Ok(())
     }
@@ -92,6 +109,10 @@ async fn scan_target(path: PathBuf, rows: Arc<Mutex<Vec<ScanRow>>>) -> io::Resul
                 async move {
                     let is_npm = path.join("package.json").exists();
                     let is_cargo = path.join("Cargo.toml").exists();
+                    let is_skip = path.join("rmdev.skip").exists();
+                    if is_skip {
+                        return;
+                    }
 
                     if is_npm {
                         let mut scan_rows = scan_rows.lock().unwrap();
