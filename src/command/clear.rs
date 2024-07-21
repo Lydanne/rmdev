@@ -8,7 +8,7 @@ use std::{
 };
 
 use crate::{
-    scan_category,
+    scan_category::{self, ScanCate},
     ui::{self, UI},
 };
 
@@ -31,6 +31,7 @@ impl Clear {
 
         if self.ci {
             scan_target(self.target.clone().into(), rows.clone()).await?;
+            clear_target(rows.clone())?;
             println!("Clear {} project cache.", rows.lock().unwrap().len());
         } else {
             // println!("Scan rows: {:?}", rows);
@@ -50,10 +51,8 @@ impl Clear {
             let code = th.join().unwrap();
 
             if code == 0 {
+                clear_target(rows.clone())?;
                 println!("Clear {} project cache.", rows.lock().unwrap().len());
-                for row in rows.lock().unwrap().iter() {
-                    println!("{:?}", row);
-                }
             }
         }
 
@@ -65,7 +64,7 @@ impl Clear {
 pub struct ScanRow {
     pub path: PathBuf,
     pub project: String,
-    pub cate: String,
+    pub cate: ScanCate,
     pub size: u64, // Bytes
 }
 
@@ -73,7 +72,7 @@ impl ScanRow {
     pub fn ref_data(&self) -> [String; 4] {
         [
             self.project.clone(),
-            self.cate.as_str().to_string(),
+            self.cate.ident(),
             format!("{:.2}GB", (self.size as f64) / 1024.0 / 1024.0 / 1024.0),
             format!("{:?}", self.path.to_str().unwrap()),
         ]
@@ -82,6 +81,42 @@ impl ScanRow {
     pub fn ref_head() -> [&'static str; 4] {
         ["Project", "Cate", "Size", "Path"]
     }
+}
+
+fn clear_target(rows: Arc<Mutex<Vec<ScanRow>>>) -> io::Result<()> {
+    let rows = rows.lock().unwrap();
+    for row in rows.iter() {
+        if let Err(err) = traverse_rm(row.path.clone(), row.cate.clone()) {
+            eprintln!("[RM] {:?} Error: {}", row.path, err);
+        }
+        println!("[RM] {:?} Success", row.path);
+    }
+    Ok(())
+}
+
+fn traverse_rm(path: PathBuf, cate: ScanCate) -> io::Result<()> {
+    let mut stack = vec![path];
+
+    while let Some(path) = stack.pop() {
+        if cate.rm_keyfile(&path) {
+            let _ = fs::remove_dir_all(path);
+            continue;
+        }
+        if path.is_dir() {
+            let dir = fs::read_dir(path);
+            if let Ok(dir) = dir {
+                for entry in dir {
+                    let entry = entry;
+                    if let Ok(entry) = entry {
+                        let entry_path = entry.path();
+                        stack.push(entry_path);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
 async fn scan_target(path: PathBuf, rows: Arc<Mutex<Vec<ScanRow>>>) -> io::Result<()> {
@@ -109,7 +144,7 @@ async fn scan_target(path: PathBuf, rows: Arc<Mutex<Vec<ScanRow>>>) -> io::Resul
                             let project = path.file_name().unwrap().to_str().unwrap().to_string();
                             scan_rows.push(ScanRow {
                                 path: path.clone(),
-                                cate: cate.ident(),
+                                cate: cate.clone(),
                                 size: get_directory_size(&path, visited).unwrap(),
                                 // size: scan_size(path, &mut HashSet::new()).unwrap(),
                                 // size: 0,

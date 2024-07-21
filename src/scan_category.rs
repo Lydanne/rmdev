@@ -5,7 +5,7 @@ use once_cell::sync::Lazy;
 pub(crate) static STRATEGY: Lazy<Vec<ScanCate>> =
     Lazy::new(|| vec![ScanCate::Npm, ScanCate::Cargo]);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ScanCate {
     Npm,
     Cargo,
