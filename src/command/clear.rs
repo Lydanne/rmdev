@@ -99,7 +99,20 @@ fn traverse_rm(path: PathBuf, cate: ScanCate) -> io::Result<()> {
 
     while let Some(path) = stack.pop() {
         if cate.rm_keyfile(&path) {
-            let _ = fs::remove_dir_all(path);
+            let mut remove_yes = false;
+            let confirmation = dialoguer::Confirm::new()
+                .with_prompt(format!(
+                    "[RM] The `{path:?}` directory is about to be remove, Do you want to continue?"
+                ))
+                .interact()
+                .unwrap();
+
+            if confirmation {
+                remove_yes = true;
+            }
+            if remove_yes {
+                let _ = fs::remove_dir_all(path);
+            }
             continue;
         }
         if path.is_dir() {
