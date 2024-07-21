@@ -140,7 +140,7 @@ async fn scan_target(path: PathBuf, rows: Arc<Mutex<Vec<ScanRow>>>) -> io::Resul
                     for cate in scan_category::STRATEGY.iter() {
                         if cate.access_keyfile(&path) {
                             let mut scan_rows = scan_rows.lock().unwrap();
-                            let path = path.clone();
+                            let path = path.canonicalize().unwrap();
                             let project = path.file_name().unwrap().to_str().unwrap().to_string();
                             scan_rows.push(ScanRow {
                                 path: path.clone(),
