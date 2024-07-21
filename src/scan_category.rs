@@ -21,8 +21,8 @@ impl ScanCate {
 
     pub(crate) fn rm_keyfile(&self, path: &Path) -> bool {
         match self {
-            Self::Npm => path.join("node_modules").exists(),
-            Self::Cargo => path.join("target").exists(),
+            Self::Npm => path.to_str().unwrap().contains("node_modules"),
+            Self::Cargo => path.to_str().unwrap().contains("target"),
         }
     }
 
