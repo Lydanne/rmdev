@@ -23,7 +23,7 @@ This is a tool to delete the remaining dependencies and cache files in the devel
 ## Install
 
 ```shell
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh # install cargo
 
 cargo install rmdev
 ```
@@ -31,9 +31,9 @@ cargo install rmdev
 ## Use
 
 ```shell
-rmdev clear ~/
+rmdev clear ../
 
-# ~/ scan all project.
+# ../ clear target dir
 ```
 
 ## Help
