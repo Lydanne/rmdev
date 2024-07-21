@@ -33,7 +33,7 @@ impl Clear {
         if self.ci {
             scan_target(self.target.clone().into(), rows.clone()).await?;
             let removed_count = clear_target(rows.clone(), self.force)?;
-            println!("Clear {removed_count} project cache.");
+            println!("[RM] Clear {removed_count} project cache.");
         } else {
             // println!("Scan rows: {:?}", rows);
             let th = spawn({
@@ -53,7 +53,7 @@ impl Clear {
 
             if code == 0 {
                 let removed_count = clear_target(rows.clone(), self.force)?;
-                println!("Clear {removed_count} project cache.");
+                println!("[RM] Clear {removed_count} project cache.");
             }
         }
 
