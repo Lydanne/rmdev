@@ -32,8 +32,8 @@ impl Clear {
 
         if self.ci {
             scan_target(self.target.clone().into(), rows.clone()).await?;
-            clear_target(rows.clone(), self.force)?;
-            println!("Clear {} project cache.", rows.lock().unwrap().len());
+            let removed_count = clear_target(rows.clone(), self.force)?;
+            println!("Clear {removed_count} project cache.");
         } else {
             // println!("Scan rows: {:?}", rows);
             let th = spawn({
@@ -52,8 +52,8 @@ impl Clear {
             let code = th.join().unwrap();
 
             if code == 0 {
-                clear_target(rows.clone(), self.force)?;
-                println!("[RM] Clear {} project cache.", rows.lock().unwrap().len());
+                let removed_count = clear_target(rows.clone(), self.force)?;
+                println!("Clear {removed_count} project cache.");
             }
         }
 
@@ -84,24 +84,30 @@ impl ScanRow {
     }
 }
 
-fn clear_target(rows: Arc<Mutex<Vec<ScanRow>>>, force: bool) -> io::Result<()> {
+fn clear_target(rows: Arc<Mutex<Vec<ScanRow>>>, force: bool) -> io::Result<usize> {
+    let mut removed_count: usize = 0;
     let rows = rows.lock().unwrap();
     for row in rows.iter() {
         match traverse_rm(row.path.clone(), row.cate.clone(), force) {
             Ok(count) => {
-                println!("[RM] {:?} success remove {}.", row.path, count);
+                if count > 0 {
+                    println!("[RM] {:?} success remove {}.", row.path, count);
+                    removed_count += 1;
+                } else {
+                    println!("[RM] {:?} no need to remove.", row.path);
+                }
             }
             Err(err) => {
                 eprintln!("[RM] {:?} Error: {}", row.path, err);
             }
         }
     }
-    Ok(())
+    Ok(removed_count)
 }
 
 fn traverse_rm(path: PathBuf, cate: ScanCate, force: bool) -> io::Result<usize> {
     let mut stack = vec![path];
-    let mut removed_count = 0;
+    let mut removed_count: usize = 0;
 
     while let Some(path) = stack.pop() {
         if cate.rm_keyfile(&path) {
