@@ -43,7 +43,7 @@ struct TableColors {
 }
 
 impl TableColors {
-    const fn new(color: &tailwind::Palette) -> Self {
+    fn new(color: &tailwind::Palette) -> Self {
         Self {
             buffer_bg: tailwind::SLATE.c950,
             header_bg: color.c900,

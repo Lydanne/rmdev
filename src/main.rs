@@ -1,7 +1,3 @@
-#![feature(const_trait_impl)]
-#![feature(effects)]
-#![feature(const_option)]
-
 use clap::Parser;
 use command::Cli;
 use tokio::runtime::Builder;
