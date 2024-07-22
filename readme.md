@@ -20,7 +20,7 @@ This is a tool to delete the remaining dependencies and cache files in the devel
 
 - 🌟 batch deletion
 - 🚀 fast deletion
-- 🗑 support multi lang
+- 🧹 support multi project type
   - nodejs (nodule_modules)
   - rust (target)
   - ...
